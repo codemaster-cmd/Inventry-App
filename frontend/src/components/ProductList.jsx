@@ -1,32 +1,61 @@
 import React from 'react';
+import { Trash2 } from 'lucide-react';
 
-// ProductList component receives 'products' array and 'onDelete' function as props
 const ProductList = ({ products, onDelete }) => {
-  // Safety check: ensure products is an array before trying to map
   if (!Array.isArray(products)) {
-    return <p>No products available or invalid data format.</p>;
+    return <div className="empty-state">No products available or invalid data format.</div>;
   }
 
+  if (products.length === 0) {
+    return (
+      <div className="empty-state">
+        <h3>No inventory found</h3>
+        <p>Add your first product above to start managing stock.</p>
+      </div>
+    );
+  }
+
+  const getStatusBadge = (qty) => {
+    if (qty === 0) return <span className="badge badge-danger">Out of Stock</span>;
+    if (qty <= 5) return <span className="badge badge-warning">Low Stock ({qty})</span>;
+    return <span className="badge badge-success">In Stock</span>;
+  };
+
   return (
-    <div className="product-list">
-      <h2>Product List</h2>
-      {products.length === 0 ? (
-        <p>No products available.</p>
-      ) : (
-        <ul>
+    <div className="data-table-wrapper">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Status</th>
+            <th align="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
           {products.map((product) => (
-            <li key={product._id} className="product-item">
-              <div>
-                <h3>{product.name}</h3>
-                <p>Price: ₹{product.price}</p>
-                <p>Quantity: {product.quantity}</p>
-                <p>{product.description}</p>
-              </div>
-              <button onClick={() => onDelete(product._id)}>Delete</button>
-            </li>
+            <tr key={product._id}>
+              <td>
+                <span className="product-name">{product.name}</span>
+                <span className="product-desc" title={product.description}>{product.description}</span>
+              </td>
+              <td className="price-col">₹{product.price}</td>
+              <td className="qty-col">{product.quantity}</td>
+              <td>{getStatusBadge(product.quantity)}</td>
+              <td align="right">
+                <button 
+                  className="action-btn delete" 
+                  onClick={() => onDelete(product._id)}
+                  title="Delete Item"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </td>
+            </tr>
           ))}
-        </ul>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 };

@@ -1,19 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
+// Import global styles
+import './index.css';
 import AddProduct from './components/AddProduct';
 import ProductList from './components/ProductList';
+
+import Dashboard from './components/Dashboard';
+import Login from './components/Login';
 
 function App() {
   // State to store the list of products
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    if (token && username) {
+      setIsAuthenticated(true);
+      setUser({ username });
+    }
+  }, []);
 
   // Function to fetch products from the backend API
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/products');
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/products', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!response.ok) {
         // Try to parse the error message from the backend
         const errorData = await response.json().catch(() => ({}));
@@ -36,16 +56,21 @@ function App() {
     }
   };
 
-  // useEffect hook to fetch products when the component mounts
-  // Empty dependency array [] means it runs only once
+  // useEffect hook to fetch products when the component mounts or auth state changes
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (isAuthenticated) {
+      fetchProducts();
+    }
+  }, [isAuthenticated]);
 
   const handleDelete = async (id) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/products/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       if (response.ok) {
         fetchProducts(); // Refresh list after delete
@@ -58,16 +83,45 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    setIsAuthenticated(false);
+    setUser(null);
+  };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={(userData) => {
+      setIsAuthenticated(true);
+      setUser(userData);
+    }} />;
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Inventory Management App</h1>
+    <div className="app-container">
+      <header className="top-nav">
+        <h1>StockVision Pro</h1>
+        <button className="btn-primary" onClick={handleLogout} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Logout</button>
       </header>
-      <main>
-        <AddProduct onProductAdded={fetchProducts} />
-        {loading && <p>Loading products...</p>}
-        {error && <p className="error-message" style={{ color: 'red' }}>{error}</p>}
-        {!loading && !error && <ProductList products={products} onDelete={handleDelete} />}
+      
+      <main className="main-content">
+        {loading && <div className="loading-state"><p>Loading analytics data...</p></div>}
+        {error && <div className="error-state">
+          <p>{error}</p>
+        </div>}
+        
+        {!loading && !error && (
+          <>
+            <Dashboard products={products} />
+            <div className="card" style={{ marginTop: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 className="section-title" style={{ margin: 0 }}>Inventory Data</h2>
+              </div>
+              <AddProduct onProductAdded={fetchProducts} />
+              <ProductList products={products} onDelete={handleDelete} />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
